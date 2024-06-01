@@ -43,6 +43,7 @@ int reading = 0;
 float distance = 0;
 unsigned long int reset_time = millis();
 unsigned long int timeout = millis();
+float force;
 Stepper myStepper(stepsPerRevolution, IN1, IN3, IN2, IN4);
 
 //void check_SD(){
@@ -238,43 +239,45 @@ void setup() {
     send_data(-100);
   }
 //  windUp();
+ timeout = millis();
  do {
-    timeout = millis();
     windup_ckt = analogRead(Switch);
 //    Serial.println("windup switch : ");
 //    Serial.print(windup_ckt);
     myStepper.step(-162);
-  } while (windup_ckt < 500.0 && millis() - timeout < 1200000L);
+    if(millis() - timeout > 1200000L)break;
+  } while (windup_ckt < 500.0);
   distance = 0;
 }
 
 void loop() {
   // step one revolution in one direction:
-  //delay(500);
-  reading = (reading + analogRead(forcePin))/2;
+  delay(300);
+  for (int i = 0; i<11 ; i++) reading = (reading + analogRead(forcePin))/2;
+  
 //  Serial.print("Force reading = ");
 //  Serial.println(reading);
 //  Serial.println("");
   // This is the case when the bob is hanging in the air
   power_up_stepper();
-  while (reading > 10) {
+  while (reading > 200) {
 //    Serial.println("lowering bob down");
   myStepper.step(162);
-  delay(500);
+  delay(200);
   distance += stepval * dist_per_step;
 
-  reading = analogRead(forcePin);
+  for (int i = 0; i<11 ; i++) reading = (reading + analogRead(forcePin))/2;
 //    Serial.println(reading);
   }
   // This is the case when the bob is floating on the water level
-  while (reading <= 10) {
+  while (reading <= 200) {
 //    Serial.println("Pulling bob up");
   myStepper.step(-162);
   power_down_stepper();
-  delay(500);
+  delay(200);
   distance -= stepval * dist_per_step;
   // Serial.println(distance);
-  reading = analogRead(forcePin);
+  for (int i = 0; i<11 ; i++) reading = (reading + analogRead(forcePin))/2;
 //    Serial.println(reading);
   }
   power_down_stepper();
@@ -283,23 +286,26 @@ void loop() {
 //  Serial.println("------------");
   send_data(distance);
   rtc_setup();
+  Rtc.Begin();
+  RtcDateTime now = Rtc.GetDateTime();
 //  RtcDateTime now = Rtc.GetDateTime();
-  writeData(distance,RtcDateTime(__DATE__, __TIME__));
+  writeData(distance,now);
 //  windUp();
-  delay(5 * 60000);
+  delay(15 * 60000);
 //  Serial.println("Data Sent Successfully");
 
   //////////////////////////////////////////////////////////////
 
-  if (millis() - reset_time >= 3 * 60 * 60000) {
+  if (millis() - reset_time >= 24 * 60 * 60000) {
 //  windUp();
-    do {
     timeout = millis();
-    windup_ckt = analogRead(Switch);
+    do {
+      windup_ckt = analogRead(Switch);
 //    Serial.println("windup switch : ");
 //    Serial.print(windup_ckt);
-    myStepper.step(-162);
-  } while (windup_ckt < 500.0 && millis() - timeout < 1200000L);
+      myStepper.step(-162);
+      if(millis() - timeout > 1200000L)break;
+  } while (windup_ckt < 200);
   distance = 0;
 }
 }
